@@ -4,6 +4,7 @@ class ProjectTask(models.Model):
     _inherit = 'project.task'
 
     cancel_reason = fields.Text(string='Cancel Reason', readonly=True)
+    reject_reason = fields.Text(string='Reject Reason', readonly=True)
 
     state = fields.Selection([
         ('open', 'Open'),
@@ -14,6 +15,7 @@ class ProjectTask(models.Model):
         ('canceled', 'Cancel'),
     ], string='State', copy=False, default='open', required=True, tracking=True)
 
+    #==================== Action Methods ====================
     def action_open_cancel_wizard(self):
         """Open wizard to select cancel reason"""
         self.ensure_one()
@@ -21,6 +23,20 @@ class ProjectTask(models.Model):
             'name': 'Cancel Task',
             'type': 'ir.actions.act_window',
             'res_model': 'cancel.reason.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_task_id': self.id,
+            }
+        }
+
+    def action_open_reject_wizard(self):
+        """Open wizard to select reject reason"""
+        self.ensure_one()
+        return {
+            'name': 'Reject Task',
+            'type': 'ir.actions.act_window',
+            'res_model': 'reject.reason.wizard',
             'view_mode': 'form',
             'target': 'new',
             'context': {
@@ -46,7 +62,7 @@ class ProjectTask(models.Model):
 
     def action_reopen(self):
         """Set task back to open state"""
-        self.write({'state': 'open'})
+        self.write({'state': 'assigned'})
 
     @api.onchange('state')
     def _onchange_state(self):

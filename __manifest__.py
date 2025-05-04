@@ -15,6 +15,7 @@
 
         'views/project_task_views.xml',
         'wizard/cancel_reason_wizard_views.xml',
+        'wizard/reject_reason_wizard_views.xml',
     ],
     'installable': True,
     'application': True,
