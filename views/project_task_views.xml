@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_task_form_inherit_cancel" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.cancel</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2" />
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='stage_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//header/field[@name='state']" position="replace">
+                <field name="state" widget="statusbar" options="{'clickable': '1'}" statusbar_visible="open,assigned,inprocess,review,rejected,canceled"/>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <button name="action_assign" string="Assign" type="object" class="btn btn-primary" attrs="{'invisible': [('state', '!=', 'open')]}"/>
+                <button name="action_start" string="Start Work" type="object" class="btn btn-primary" attrs="{'invisible': [('state', '!=', 'assigned')]}"/>
+                <button name="action_review" string="Submit for Review" type="object" class="btn btn-primary" attrs="{'invisible': [('state', '!=', 'inprocess')]}"/>
+                <button name="action_reject" string="Reject" type="object" class="btn btn-warning" attrs="{'invisible': [('state', '!=', 'review')]}"/>
+                <button name="action_reopen" string="Re-open" type="object" class="btn btn-success" attrs="{'invisible': [('state', 'not in', ['rejected', 'canceled'])]}"/>
+                <button name="action_open_cancel_wizard" string="Cancel Task" type="object" class="btn btn-danger" attrs="{'invisible': [('state', 'in', ['rejected', 'canceled'])]}"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Cancel Reason" invisible="not cancel_reason">
+                    <group>
+                        <field name="cancel_reason" />
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
