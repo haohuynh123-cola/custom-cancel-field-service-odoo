@@ -14,12 +14,12 @@
             </xpath>
 
             <xpath expr="//header" position="inside">
-                <button name="action_assign" string="Assign" type="object" class="btn btn-primary" invisible="state != 'open'"/>
                 <button name="action_start" string="Start" type="object" class="btn btn-primary" invisible="state != 'assigned'"/>
-                <button name="action_review" string="Finish" type="object" class="btn btn-success" invisible="state != 'in_progress'"/>
+                <button name="action_review" string="Review" type="object" class="btn btn-success" invisible="state != 'in_progress'"/>
                 <button name="action_open_reject_wizard" string="Reject" type="object" class="btn btn-warning" invisible="state != 'review'"/>
                 <button name="action_reopen" string="Re-open" type="object" class="btn btn-success" invisible="state not in ['rejected', 'canceled']"/>
-                <button name="action_open_cancel_wizard" string="Cancel" type="object" class="btn btn-danger" invisible="state in ['rejected', 'canceled']"/>
+                <button name="action_open_cancel_wizard" string="Cancel" type="object" class="btn btn-danger" invisible="state != 'review'"/>
+                <button name="action_approve" string="Approve" type="object" class="btn btn-success" invisible="state != 'review'"/>
             </xpath>
 
             <xpath expr="//notebook" position="inside">
@@ -32,4 +32,18 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_project_task_form_inherit_status_code" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.status.code</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='allocated_hours']" position="before">
+                <group>
+                    <field name="status_code" default="N00" disabled="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

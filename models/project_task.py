@@ -5,6 +5,14 @@ class ProjectTask(models.Model):
 
     cancel_reason = fields.Text(string='Cancel Reason', readonly=True)
     reject_reason = fields.Text(string='Reject Reason', readonly=True)
+    status_code = fields.Selection([
+        ('N00', 'N00'),
+        ('N10', 'N10'),
+        ('N11', 'N11'),
+        ('L00', 'L00'),
+        ('L10', 'L10'),
+        ('L11', 'L11'),
+    ], string='Status Code', copy=False, default='N00', tracking=True)
 
     state = fields.Selection([
         ('open', 'Open'),
@@ -15,6 +23,16 @@ class ProjectTask(models.Model):
         ('done', 'Done'),
         ('canceled', 'Canceled'),
     ], string='State', copy=False, default='open', required=True, tracking=True)
+
+    # Override write method
+    def write(self, vals):
+        """
+        Save all vals check exist user_ids change to assigned state
+        """
+        #check vals log
+        if 'user_ids' in vals:
+            vals['state'] = 'assigned'
+        return super(ProjectTask, self).write(vals)
 
 
     #==================== Action Methods ====================
@@ -46,10 +64,6 @@ class ProjectTask(models.Model):
             }
         }
 
-    def action_assign(self):
-        """Set task to assigned state"""
-        self.write({'state': 'assigned'})
-
     def action_start(self):
         """Set task to inprocess state"""
         self.write({'state': 'in_progress'})
@@ -74,6 +88,10 @@ class ProjectTask(models.Model):
         """Set task to assigned state"""
         self.write({'state': 'assigned'})
 
+    def action_approve(self):
+        """Set task to done state"""
+        self.write({'state': 'done'})
+
     #==================== Onchange Methods ====================
     @api.onchange('state')
     def _onchange_state(self):
@@ -81,3 +99,10 @@ class ProjectTask(models.Model):
             self.cancel_reason = 'Cancelled'
         else:
             self.cancel_reason = False
+
+    @api.onchange('user_ids')
+    def _onchange_user_ids(self):
+        if self.user_ids:
+            self.state = 'assigned'
+        else:
+            self.state = 'open'
