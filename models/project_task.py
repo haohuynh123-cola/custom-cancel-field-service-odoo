@@ -6,6 +6,17 @@ class ProjectTask(models.Model):
     cancel_reason = fields.Text(string='Cancel Reason', readonly=True)
     reject_reason = fields.Text(string='Reject Reason', readonly=True)
 
+    state = fields.Selection([
+        ('open', 'Open'),
+        ('assigned', 'Assigned'),
+        ('in_progress', 'In Progress'),
+        ('review', 'Review'),
+        ('rejected', 'Rejected'),
+        ('done', 'Done'),
+        ('canceled', 'Canceled'),
+    ], string='State', copy=False, default='open', required=True, tracking=True)
+
+
     #==================== Action Methods ====================
     def action_open_cancel_wizard(self):
         """Open wizard to select cancel reason"""
@@ -34,6 +45,34 @@ class ProjectTask(models.Model):
                 'default_task_id': self.id,
             }
         }
+
+    def action_assign(self):
+        """Set task to assigned state"""
+        self.write({'state': 'assigned'})
+
+    def action_start(self):
+        """Set task to inprocess state"""
+        self.write({'state': 'in_progress'})
+
+    def action_review(self):
+        """Set task to review state"""
+        self.write({'state': 'review'})
+
+    def action_reject(self):
+        """Set task to rejected state"""
+        self.write({'state': 'rejected'})
+
+    def action_done(self):
+        """Set task to done state"""
+        self.write({'state': 'done'})
+
+    def action_cancel(self):
+        """Set task to canceled state"""
+        self.write({'state': 'canceled'})
+
+    def action_reopen(self):
+        """Set task to assigned state"""
+        self.write({'state': 'assigned'})
 
     #==================== Onchange Methods ====================
     @api.onchange('state')
