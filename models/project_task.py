@@ -12,7 +12,13 @@ class ProjectTask(models.Model):
         ('L00', 'L00'),
         ('L10', 'L10'),
         ('L11', 'L11'),
-    ], string='Status Code', copy=False, default='N00', tracking=True)
+    ], string='Status Code', default='N00', tracking=True)
+
+    # Các trường mới từ Google Sheet
+    score = fields.Float(string='Score', default=0)
+    start_date = fields.Datetime(string='Start Date')
+    is_urgent = fields.Boolean(string='Is Urgent', default=False)
+    account_id = fields.Text(string='Account ID')
 
     state = fields.Selection([
         ('open', 'Open'),
@@ -65,8 +71,12 @@ class ProjectTask(models.Model):
         }
 
     def action_start(self):
-        """Set task to inprocess state"""
+        """Set task to inprocess state
+            Update panned_start_date to current date
+        """
+        self.panned_start_date = fields.Datetime.now()
         self.write({'state': 'in_progress'})
+
 
     def action_review(self):
         """Set task to review state"""
