@@ -15,10 +15,11 @@ class ProjectTask(models.Model):
     ], string='Status Code', default='N00', tracking=True)
 
     # Các trường mới từ Google Sheet
-    score = fields.Float(string='Score', default=0)
-    start_date = fields.Datetime(string='Start Date')
-    is_urgent = fields.Boolean(string='Is Urgent', default=False)
-    account_id = fields.Text(string='Account ID')
+    score = fields.Float(string='Score', default=0, tracking=True)
+    start_date = fields.Datetime(string='Start Date', tracking=True)
+    is_urgent = fields.Boolean(string='Is Urgent', default=False, tracking=True)
+    account_id = fields.Text(string='Account ID', tracking=True)
+    finish_time = fields.Datetime(string='Finish Time', tracking=True)
 
     state = fields.Selection([
         ('open', 'Open'),
@@ -38,7 +39,10 @@ class ProjectTask(models.Model):
         #check vals log
         if 'user_ids' in vals:
             vals['state'] = 'assigned'
-        return super(ProjectTask, self).write(vals)
+        res = super(ProjectTask, self).write(vals)
+        if 'state' in vals or 'date_deadline' in vals or 'user_ids' in vals:
+            self._compute_status_code()
+        return res
 
 
     #==================== Action Methods ====================
@@ -70,37 +74,51 @@ class ProjectTask(models.Model):
             }
         }
 
+    def action_assign(self):
+        """Set task to assigned state"""
+        self.write({'state': 'assigned'})
+        self._compute_status_code()
+
     def action_start(self):
         """Set task to inprocess state
-            Update panned_start_date to current date
+            Update planned_date_begin to current date when planned_date_begin is null
         """
-        self.panned_start_date = fields.Datetime.now()
+        if not self.planned_date_begin:
+            self.planned_date_begin = fields.Datetime.now()
         self.write({'state': 'in_progress'})
-
+        self._compute_status_code()
 
     def action_review(self):
         """Set task to review state"""
-        self.write({'state': 'review'})
+        self.write({'state': 'review', 'finish_time': fields.Datetime.now()})
+        self._compute_status_code()
 
     def action_reject(self):
         """Set task to rejected state"""
         self.write({'state': 'rejected'})
+        self._compute_status_code()
+
+    def action_reopen(self):
+        """Set task back to assigned state"""
+        self.write({'state': 'open'})
+        self._compute_status_code()
 
     def action_done(self):
-        """Set task to done state"""
+        """Override native action_done to handle Mark as done button"""
         self.write({'state': 'done'})
+        self._compute_status_code()
+        return True
+
+    def action_approve(self):
+        """Approve task and set to done"""
+        self.write({'state': 'done'})
+        self._compute_status_code()
+        return True
 
     def action_cancel(self):
         """Set task to canceled state"""
         self.write({'state': 'canceled'})
-
-    def action_reopen(self):
-        """Set task to assigned state"""
-        self.write({'state': 'assigned'})
-
-    def action_approve(self):
-        """Set task to done state"""
-        self.write({'state': 'done'})
+        self._compute_status_code()
 
     #==================== Onchange Methods ====================
     @api.onchange('state')
@@ -109,10 +127,45 @@ class ProjectTask(models.Model):
             self.cancel_reason = 'Cancelled'
         else:
             self.cancel_reason = False
+        # Cập nhật status_code khi state thay đổi
+        self._compute_status_code()
 
     @api.onchange('user_ids')
     def _onchange_user_ids(self):
-        if self.user_ids:
+        """
+        Set task to assigned state if user_ids is not empty when state is open
+        """
+        if self.state == 'open' and self.user_ids:
             self.state = 'assigned'
-        else:
-            self.state = 'open'
+
+    @api.depends('state', 'date_deadline', 'user_ids')
+    def _compute_status_code(self):
+        """Cập nhật status_code dựa trên quy tắc:
+        - N00 - Chưa nhận, chưa trễ hạn
+        - N10 - Đã nhận, chưa trễ hạn, chưa hoàn thành
+        - N11 - Đã nhận và hoàn thành đúng hạn
+        - L00 - Chưa nhận, đã trễ hạn
+        - L10 - Đã nhận, đã trễ hạn và chưa hoàn thành
+        - L11 - Đã nhận, đã hoàn thành và đã trễ hạn
+        """
+        for task in self:
+            # Kiểm tra trễ hạn
+            is_late = False
+            if task.date_deadline:
+                today = fields.Date.today()
+                deadline_date = fields.Date.from_string(task.date_deadline)
+                is_late = today > deadline_date
+
+            # Kiểm tra đã nhận task chưa
+            is_assigned = bool(task.user_ids) or task.state not in ['open', 'canceled']
+
+            # Kiểm tra đã hoàn thành chưa
+            is_done = task.state in ['done', 'rejected'] or task.state == 'review' and not is_late
+
+            # Xác định status_code
+            prefix = "L" if is_late else "N"
+            middle = "1" if is_assigned else "0"
+            suffix = "1" if is_done else "0"
+
+            task.status_code = f"{prefix}{middle}{suffix}"
+

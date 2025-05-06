@@ -101,13 +101,35 @@ class WebhookController(http.Controller):
                 # Xử lí tag_ids and seve to tag_ids in task
                 if task_data.get('product'):
                     tag_names = task_data.get('product').split(',')
-                    tags = request.env['project.tags'].sudo().search([('name', 'in', tag_names)])
-                    if tags:
-                        tag_ids = [(6, 0, tags.ids)]
+                    # Tách tag names và loại bỏ khoảng trắng thừa
+                    tag_names = [name.strip() for name in tag_names if name.strip()]
+
+                    # Tìm các tag đã tồn tại
+                    existing_tags = request.env['project.tags'].sudo().search([('name', 'in', tag_names)])
+                    existing_tag_names = existing_tags.mapped('name')
+
+                    # Xác định các tag cần tạo mới
+                    new_tag_names = [name for name in tag_names if name not in existing_tag_names]
+                    created_tags = request.env['project.tags']
+
+                    # Tạo mới các tag chưa tồn tại
+                    for tag_name in new_tag_names:
+                        try:
+                            new_tag = request.env['project.tags'].sudo().create({'name': tag_name})
+                            created_tags += new_tag
+                            _logger.info(f"Đã tạo tag mới: {tag_name}")
+                        except Exception as e:
+                            _logger.error(f"Lỗi khi tạo tag '{tag_name}': {str(e)}")
+
+                    # Kết hợp tag hiện có và tag mới tạo
+                    all_tags = existing_tags + created_tags
+
+                    if all_tags:
+                        tag_ids = [(6, 0, all_tags.ids)]
                     else:
-                        tag_ids = None
+                        tag_ids = [(6, 0, [])]
                 else:
-                    tag_ids = None
+                    tag_ids = [(6, 0, [])]  # Luôn gán danh sách rỗng thay vì None
 
                 # Sử dụng sudo() để bỏ qua kiểm tra quyền
                 task = request.env['project.task'].sudo().search([('name', '=', task_code)])
