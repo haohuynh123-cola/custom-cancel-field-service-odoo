@@ -26,7 +26,7 @@ class CancelReasonWizard(models.TransientModel):
             })
 
         self.task_id.write({
-            'state': 'canceled',
+            'stage_id': 18,
             'cancel_reason': self.reason,
         })
 

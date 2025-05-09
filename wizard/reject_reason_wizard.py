@@ -26,7 +26,7 @@ class RejectReasonWizard(models.TransientModel):
             })
 
         self.task_id.write({
-            'state': 'rejected',
+            'stage_id': 26,
             'reject_reason': self.reason,
         })
 

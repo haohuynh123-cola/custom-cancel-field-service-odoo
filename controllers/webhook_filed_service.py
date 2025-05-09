@@ -152,7 +152,6 @@ class WebhookController(http.Controller):
                         'name': task_code,
                         'description': description + link_append,
                         'project_id': 1,
-                        'worksheet_template_id': 5,
                         'user_ids': [(6, 0, [1])],
                         'tag_ids': tag_ids,
                         'partner_id': partner_id,
