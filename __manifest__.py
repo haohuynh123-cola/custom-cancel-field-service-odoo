@@ -27,7 +27,7 @@
         'wizard/reject_reason_wizard_views.xml',
     ],
     'installable': True,
-    'application': True,
+    'application': False,
     'auto_install': False,
     'license': 'LGPL-3',
 }
