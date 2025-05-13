@@ -233,36 +233,36 @@ class ProjectTask(models.Model):
             """
             Tạo task mới và tự động assign cho user đầu tiên trong project
             """
-            if vals.get('project_id'):
-                project = self.env['project.project'].browse(vals['project_id'])
-                #get schedule_config
-                schedule_config = project.schedule_config
-                #get limit_task
-                limit_task = project.limit_task
-                #get user_ids
-                user_ids = project.user_ids
-                if schedule_config == 'balanced':
-                    #chia theo số lượng task cho bằng nhau
-                    #lấy tất cả task của project
-                    tasks = self.env['project.task'].search([('project_id', '=', project.id)])
-                    #tính toán số lượng task cho mỗi user
-                    num_tasks_per_user = len(tasks) / len(user_ids)
-                    #assign task cho mỗi user
-                    for user in user_ids:
-                        tasks = tasks[:num_tasks_per_user]
-                        #assign task cho user và chyển trạng thái sang assigned
-                        vals['user_ids'] = [(6, 0, user.ids)]
-                        vals['stage_id'] = self.STAGE_MAPPING['ASSIGNED']['id']
-                        vals['stage_code'] = self.STAGE_MAPPING['ASSIGNED']['code']
+            # if vals.get('project_id'):
+            #     project = self.env['project.project'].browse(vals['project_id'])
+            #     #get schedule_config
+            #     schedule_config = project.schedule_config
+            #     #get limit_task
+            #     limit_task = project.limit_task
+            #     #get user_ids
+            #     user_ids = project.user_ids
+            #     if schedule_config == 'balanced':
+            #         #chia theo số lượng task cho bằng nhau
+            #         #lấy tất cả task của project
+            #         tasks = self.env['project.task'].search([('project_id', '=', project.id)])
+            #         #tính toán số lượng task cho mỗi user
+            #         num_tasks_per_user = len(tasks) / len(user_ids)
+            #         #assign task cho mỗi user
+            #         for user in user_ids:
+            #             tasks = tasks[:num_tasks_per_user]
+            #             #assign task cho user và chyển trạng thái sang assigned
+            #             vals['user_ids'] = [(6, 0, user.ids)]
+            #             vals['stage_id'] = self.STAGE_MAPPING['ASSIGNED']['id']
+            #             vals['stage_code'] = self.STAGE_MAPPING['ASSIGNED']['code']
 
-                elif schedule_config == 'limited':
-                    #chia theo số lượng task
-                    if project.user_ids:
-                        vals['user_ids'] = [(6, 0, project.user_ids.ids)]
-                elif schedule_config == 'manual':
-                    #get user_ids
-                    if project.user_ids:
-                        vals['user_ids'] = [(6, 0, project.user_ids.ids)]
+            #     elif schedule_config == 'limited':
+            #         #chia theo số lượng task
+            #         if project.user_ids:
+            #             vals['user_ids'] = [(6, 0, project.user_ids.ids)]
+            #     elif schedule_config == 'manual':
+            #         #get user_ids
+            #         if project.user_ids:
+            #             vals['user_ids'] = [(6, 0, project.user_ids.ids)]
             return super(ProjectTask, self).create(vals)
 
 
