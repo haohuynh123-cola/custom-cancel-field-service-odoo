@@ -30,4 +30,7 @@ class CancelReasonWizard(models.TransientModel):
             'cancel_reason': self.reason,
         })
 
+        #create message_post self.task_id with message " Canceled by {user.name}: {reason} at {datetime.now()}"
+        self.task_id.message_post(body=f"Canceled by {self.env.user.name}: {self.reason} at {datetime.now()}")
+
         return {'type': 'ir.actions.act_window_close'}

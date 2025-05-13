@@ -227,7 +227,7 @@ class ProjectTask(models.Model):
 
             task.status_code = f"{prefix}{middle}{suffix}"
 
-    # Khi task được tạo, thì auto assign cho user đầu tiên trong project:user_ids,schedule_config,limit_task
+    Khi task được tạo, thì auto assign cho user đầu tiên trong project:user_ids,schedule_config,limit_task
     @api.model
     def create(self, vals):
         """
