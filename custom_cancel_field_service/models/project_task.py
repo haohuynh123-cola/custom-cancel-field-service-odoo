@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -153,6 +154,16 @@ class ProjectTask(models.Model):
         self.write({'stage_code': self.STAGE_MAPPING['CANCELED']['code']})
         self._compute_status_code()
 
+    def action_un_task(self):
+        """
+            Un task remove user_ids to empty
+        """
+        self.write({'user_ids': [(5, 0, 0)]})
+        self.write({'stage_id': self.STAGE_MAPPING['OPEN']['id']})
+        self.write({'stage_code': self.STAGE_MAPPING['OPEN']['code']})
+        self._compute_status_code()
+
+
     #==================== Onchange Methods ====================
     @api.onchange('user_ids')
     def _onchange_user_ids(self):
@@ -227,42 +238,81 @@ class ProjectTask(models.Model):
 
             task.status_code = f"{prefix}{middle}{suffix}"
 
-        # Khi task được tạo, thì auto assign cho user đầu tiên trong project:user_ids,schedule_config,limit_task
-        @api.model
-        def create(self, vals):
+
+    #==================== Override Methods ====================
+    # Khi task được tạo, thì auto assign cho user đầu tiên trong project:user_ids,schedule_config,limit_task
+    @api.model
+    def create(self, vals):
             """
             Tạo task mới và tự động assign cho user đầu tiên trong project
+            Check 	AMZ10011 có trùng với task khác trong project không
             """
-            # if vals.get('project_id'):
-            #     project = self.env['project.project'].browse(vals['project_id'])
-            #     #get schedule_config
-            #     schedule_config = project.schedule_config
-            #     #get limit_task
-            #     limit_task = project.limit_task
-            #     #get user_ids
-            #     user_ids = project.user_ids
-            #     if schedule_config == 'balanced':
-            #         #chia theo số lượng task cho bằng nhau
-            #         #lấy tất cả task của project
-            #         tasks = self.env['project.task'].search([('project_id', '=', project.id)])
-            #         #tính toán số lượng task cho mỗi user
-            #         num_tasks_per_user = len(tasks) / len(user_ids)
-            #         #assign task cho mỗi user
-            #         for user in user_ids:
-            #             tasks = tasks[:num_tasks_per_user]
-            #             #assign task cho user và chyển trạng thái sang assigned
-            #             vals['user_ids'] = [(6, 0, user.ids)]
-            #             vals['stage_id'] = self.STAGE_MAPPING['ASSIGNED']['id']
-            #             vals['stage_code'] = self.STAGE_MAPPING['ASSIGNED']['code']
+            if vals.get('name'):
+                #check title có trùng với task khác trong project không
+                existing_task = self.search([
+                    ('project_id', '=', vals['project_id']),
+                    ('name', '=', vals['name'])
+                ])
+                if existing_task:
+                    raise UserError("Task code already exists in the project")
 
-            #     elif schedule_config == 'limited':
-            #         #chia theo số lượng task
-            #         if project.user_ids:
-            #             vals['user_ids'] = [(6, 0, project.user_ids.ids)]
-            #     elif schedule_config == 'manual':
-            #         #get user_ids
-            #         if project.user_ids:
-            #             vals['user_ids'] = [(6, 0, project.user_ids.ids)]
+            if vals.get('project_id'):
+                _logger.info("Creating task with vals: %s", vals)
+                project = self.env['project.project'].browse(vals['project_id'])
+                #get schedule_config
+                schedule_config = project.schedule_config
+                #get limit_task
+                limit_task = project.limit_task
+                #get user_ids
+                user_ids = project.user_ids
+                if schedule_config == 'balanced':
+                    if user_ids:
+                        # Get the list of users in the project
+                        project_user_ids = user_ids.ids
+
+                        if project_user_ids:
+                            # Count tasks assigned to each user in this project
+                            user_task_counts = {}
+                            for user_id in project_user_ids:
+                                task_count = self.search_count([
+                                    ('project_id', '=', project.id),
+                                    ('user_ids', 'in', [user_id]),
+                                    ('stage_id', 'not in', [
+                                        self.STAGE_MAPPING['COMPLETED']['id'],
+                                        self.STAGE_MAPPING['CANCELED']['id']
+                                    ])
+                                ])
+                                user_task_counts[user_id] = task_count
+
+                            # Find the user with the fewest tasks
+                            min_tasks = float('inf')
+                            selected_user_id = None
+
+                            for user_id, count in user_task_counts.items():
+                                # Skip users who have reached the task limit
+                                if limit_task and count >= limit_task:
+                                    continue
+
+                                if count < min_tasks:
+                                    min_tasks = count
+                                    selected_user_id = user_id
+
+                            # Assign task to the selected user if found
+                            if selected_user_id:
+                                vals['user_ids'] = [(6, 0, [selected_user_id])]
+                                _logger.info("Balanced assignment: Task assigned to user ID %s with %s existing tasks",
+                                            selected_user_id, min_tasks)
+                            else:
+                                _logger.warning("All users have reached the task limit (%s). Task left unassigned.", limit_task)
+
+                elif schedule_config == 'limited':
+                    #chia theo số lượng task
+                    if project.user_ids:
+                        vals['user_ids'] = [(6, 0, project.user_ids.ids)]
+                elif schedule_config == 'manual':
+                    #get user_ids
+                    if project.user_ids:
+                        vals['user_ids'] = [(6, 0, project.user_ids.ids)]
             return super(ProjectTask, self).create(vals)
 
 
